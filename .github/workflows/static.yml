@@ -1,0 +1,51 @@
+# .github/workflows/deploy-pages.yml
+name: Deploy static content to Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  # Change this to '.' if index.html is in the repo root
+  # Or 'export' if your files are under ./export
+  PUBLISH_DIR: '.'
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure .nojekyll (prevents Jekyll from ignoring asset folders)
+        run: |
+          touch "$PUBLISH_DIR/.nojekyll"
+
+      - name: Verify publish dir has index.html
+        run: |
+          test -f "$PUBLISH_DIR/index.html" || (echo "index.html not found in $PUBLISH_DIR" && exit 1)
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.PUBLISH_DIR }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
